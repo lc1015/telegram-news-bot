@@ -1,0 +1,13 @@
+# Credentials — never commit these
+.env
+*.log
+
+# Dedup state — local only
+seen_titles.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
