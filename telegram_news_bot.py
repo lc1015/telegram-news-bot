@@ -123,8 +123,18 @@ class TelegramNewsBot:
         self.channel_id = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
         self.newsapi_key = os.getenv("NEWSAPI_KEY", "").strip()
 
+        # Debug: show which vars are present
+        log.info("TOKEN set: %s", bool(self.token))
+        log.info("CHANNEL set: %s", bool(self.channel_id))
+        log.info("NEWSAPI set: %s", bool(self.newsapi_key))
+
         if not all([self.token, self.channel_id, self.newsapi_key]):
-            raise ValueError("Missing credentials. Run `python setup.py` or fill in .env")
+            missing = [k for k, v in {
+                "TELEGRAM_BOT_TOKEN": self.token,
+                "TELEGRAM_CHANNEL_ID": self.channel_id,
+                "NEWSAPI_KEY": self.newsapi_key,
+            }.items() if not v]
+            raise ValueError(f"Missing credentials: {missing}. Add them in Railway Variables tab.")
 
         raw_keywords = os.getenv("KEYWORDS", "Bitcoin,MSFT,Apple")
         self.keywords = [k.strip() for k in raw_keywords.split(",") if k.strip()]
