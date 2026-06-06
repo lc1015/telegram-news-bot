@@ -162,20 +162,42 @@ class TelegramNewsBot:
 
     # ── NewsAPI fetching ──────────────────────────────────────────────────────
 
-    def _fetch_by_keyword(self, keyword: str) -> list[dict]:
+    def _build_keyword_queries(self) -> list[str]:
+        """
+        Combine all keywords into as few OR-queries as possible.
+        NewsAPI limits the q parameter to 500 chars, so we chunk if needed.
+        This keeps us well under the free-tier 100 requests/day limit.
+        """
+        queries: list[str] = []
+        current: list[str] = []
+        for kw in self.keywords:
+            # Quote multi-word keywords so they match as phrases
+            term = f'"{kw}"' if " " in kw else kw
+            candidate = " OR ".join(current + [term])
+            if len(candidate) > 450:  # leave headroom under the 500-char limit
+                queries.append(" OR ".join(current))
+                current = [term]
+            else:
+                current.append(term)
+        if current:
+            queries.append(" OR ".join(current))
+        return queries
+
+    def _fetch_by_query(self, query: str) -> list[dict]:
+        """Fetch articles for a combined OR-query (one HTTP request)."""
         params = {
-            "q": keyword,
+            "q": query,
             "apiKey": self.newsapi_key,
             "language": "en",
             "sortBy": "publishedAt",
-            "pageSize": 10,
+            "pageSize": 30,
         }
         try:
             resp = requests.get(f"{NEWSAPI_BASE}/everything", params=params, timeout=10)
             resp.raise_for_status()
             return resp.json().get("articles", [])
         except requests.RequestException as exc:
-            log.warning("NewsAPI keyword fetch failed (%s): %s", keyword, exc)
+            log.warning("NewsAPI query fetch failed: %s", exc)
             return []
 
     def _fetch_by_category(self) -> list[dict]:
@@ -199,8 +221,9 @@ class TelegramNewsBot:
         if self.news_category:
             raw.extend(self._fetch_by_category())
 
-        for kw in self.keywords:
-            raw.extend(self._fetch_by_keyword(kw))
+        # One request per combined OR-query (instead of one per keyword)
+        for query in self._build_keyword_queries():
+            raw.extend(self._fetch_by_query(query))
 
         fresh = []
         seen_this_cycle: set[str] = set()
