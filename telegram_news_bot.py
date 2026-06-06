@@ -49,19 +49,11 @@ MAX_SEEN_TITLES = 5000
 # Articles are matched top-to-bottom; first match wins.
 SECTIONS = [
     {
-        "label": "🇲🇾 Malaysia News",
-        "keywords": {
-            "malaysia", "malaysian", "ringgit", "klci", "bursa",
-            "anwar", "anwar ibrahim", "putrajaya", "kuala lumpur",
-            "petronas", "khazanah", "maybank", "cimb", "public bank",
-        },
-    },
-    {
-        "label": "🤖 AI & Technology",
+        "label": "🤖 AI",
         "keywords": {
             "ai", "artificial intelligence", "chatgpt", "openai", "claude",
             "gemini", "llm", "machine learning", "deep learning", "generative",
-            "anthropic", "gpt", "nvidia", "semiconductor", "chip",
+            "anthropic", "gpt", "neural network", "agi", "copilot",
         },
     },
     {
@@ -69,7 +61,7 @@ SECTIONS = [
         "keywords": {
             "bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency",
             "blockchain", "defi", "altcoin", "nft", "web3", "binance",
-            "coinbase", "solana", "ripple", "xrp",
+            "coinbase", "solana", "ripple", "xrp", "stablecoin",
         },
     },
     {
@@ -86,12 +78,13 @@ SECTIONS = [
         "keywords": {
             "apple", "microsoft", "google", "meta", "amazon", "tesla",
             "samsung", "sony", "startup", "software", "cybersecurity",
-            "iphone", "android", "cloud", "data center",
+            "iphone", "android", "cloud", "data center", "nvidia",
+            "semiconductor", "chip",
         },
     },
     {
-        "label": "🌍 Global News",
-        "keywords": set(),  # catch-all — matches everything not caught above
+        "label": "🌍 Other",
+        "keywords": set(),  # catch-all — matches anything not caught above
     },
 ]
 
@@ -126,18 +119,13 @@ class TelegramNewsBot:
         self.channel_id = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
         self.newsapi_key = os.getenv("NEWSAPI_KEY", "").strip()
 
-        # Debug: show which vars are present
-        log.info("TOKEN set: %s", bool(self.token))
-        log.info("CHANNEL set: %s", bool(self.channel_id))
-        log.info("NEWSAPI set: %s", bool(self.newsapi_key))
-
         if not all([self.token, self.channel_id, self.newsapi_key]):
             missing = [k for k, v in {
                 "TELEGRAM_BOT_TOKEN": self.token,
                 "TELEGRAM_CHANNEL_ID": self.channel_id,
                 "NEWSAPI_KEY": self.newsapi_key,
             }.items() if not v]
-            raise ValueError(f"Missing credentials: {missing}. Add them in Railway Variables tab.")
+            raise ValueError(f"Missing credentials: {missing}. Set them in your .env or Railway Variables.")
 
         raw_keywords = os.getenv("KEYWORDS", "Bitcoin,MSFT,Apple")
         self.keywords = [k.strip() for k in raw_keywords.split(",") if k.strip()]
