@@ -22,7 +22,10 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
-load_dotenv()
+# Load .env for local development only; on Railway env vars are injected directly
+import os as _os
+if _os.path.exists(".env"):
+    load_dotenv(override=False)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
