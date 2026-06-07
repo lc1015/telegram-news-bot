@@ -49,11 +49,14 @@ MAX_SEEN_TITLES = 5000
 # Articles are matched top-to-bottom; first match wins.
 SECTIONS = [
     {
-        "label": "🤖 AI",
+        "label": "📈 Stock Market",
         "keywords": {
-            "ai", "artificial intelligence", "chatgpt", "openai", "claude",
-            "gemini", "llm", "machine learning", "deep learning", "generative",
-            "anthropic", "gpt", "neural network", "agi", "copilot",
+            "stocks", "stock market", "s&p", "s&p 500", "nasdaq", "dow jones",
+            "dow", "wall street", "fed", "federal reserve", "inflation",
+            "interest rate", "rate cut", "rate hike", "earnings", "ipo",
+            "bonds", "treasury", "recession", "gdp", "selloff", "sell-off",
+            "rally", "bear market", "bull market", "volatility", "vix",
+            "hedge fund", "etf", "futures", "yields",
         },
     },
     {
@@ -62,29 +65,16 @@ SECTIONS = [
             "bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency",
             "blockchain", "defi", "altcoin", "nft", "web3", "binance",
             "coinbase", "solana", "ripple", "xrp", "stablecoin",
+            "spot etf", "halving",
         },
     },
     {
-        "label": "📈 Finance",
+        "label": "🤖 AI",
         "keywords": {
-            "stocks", "stock market", "s&p", "nasdaq", "dow jones",
-            "fed", "federal reserve", "inflation", "interest rate", "earnings",
-            "ipo", "bonds", "recession", "gdp", "economy", "economic",
-            "wall street", "hedge fund", "etf",
+            "ai", "artificial intelligence", "chatgpt", "openai", "claude",
+            "gemini", "llm", "machine learning", "deep learning", "generative",
+            "anthropic", "gpt", "neural network", "agi", "copilot", "nvidia",
         },
-    },
-    {
-        "label": "💻 Tech",
-        "keywords": {
-            "apple", "microsoft", "google", "meta", "amazon", "tesla",
-            "samsung", "sony", "startup", "software", "cybersecurity",
-            "iphone", "android", "cloud", "data center", "nvidia",
-            "semiconductor", "chip",
-        },
-    },
-    {
-        "label": "🌍 Other",
-        "keywords": set(),  # catch-all — matches anything not caught above
     },
 ]
 
@@ -95,20 +85,22 @@ def _word_match(keyword: str, text: str) -> bool:
     return bool(re.search(pattern, text))
 
 
-def detect_section(article: dict) -> dict:
-    """Return the first SECTIONS entry whose keywords match whole-words in the article."""
+def detect_section(article: dict) -> dict | None:
+    """
+    Return the matching SECTIONS entry, or None if the article doesn't
+    belong to any of our 3 topics (Stock Market / Crypto / AI).
+    Articles returning None are skipped — keeps the channel on-topic.
+    """
     text = " ".join([
         (article.get("title") or ""),
         (article.get("description") or ""),
     ]).lower()
 
     for section in SECTIONS:
-        if not section["keywords"]:
-            return section  # catch-all — Global News
         if any(_word_match(kw, text) for kw in section["keywords"]):
             return section
 
-    return SECTIONS[-1]
+    return None  # off-topic — will be filtered out
 
 
 class TelegramNewsBot:
@@ -227,6 +219,7 @@ class TelegramNewsBot:
 
         fresh = []
         seen_this_cycle: set[str] = set()
+        skipped_offtopic = 0
         for article in raw:
             title = (article.get("title") or "").strip()
             url = (article.get("url") or "").strip()
@@ -235,12 +228,23 @@ class TelegramNewsBot:
             norm = title.lower()
             if norm in seen_this_cycle or self._is_duplicate(title):
                 continue
+
+            # Only keep articles that match one of our 3 topics
+            section = detect_section(article)
+            if section is None:
+                skipped_offtopic += 1
+                continue
+
             seen_this_cycle.add(norm)
+            article["_section"] = section  # cache for posting
             fresh.append(article)
             if len(fresh) >= self.max_articles:
                 break
 
-        log.info("Collected %d new articles (from %d raw)", len(fresh), len(raw))
+        log.info(
+            "Collected %d on-topic articles (from %d raw, %d off-topic skipped)",
+            len(fresh), len(raw), skipped_offtopic,
+        )
         return fresh
 
     # ── Message formatting ────────────────────────────────────────────────────
@@ -281,7 +285,10 @@ class TelegramNewsBot:
     # ── Telegram posting ──────────────────────────────────────────────────────
 
     async def _post_article(self, article: dict) -> bool:
-        section = detect_section(article)
+        # Use the section detected during collection, or detect on the fly
+        section = article.get("_section") or detect_section(article)
+        if section is None:  # safety guard — shouldn't happen after filtering
+            return False
         message_text = self._format_message(article, section)
         image_url = article.get("urlToImage", "")
 
