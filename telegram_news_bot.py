@@ -44,6 +44,14 @@ POST_DELAY = 3           # seconds between Telegram posts (flood limit safety)
 SEEN_TITLES_FILE = Path("seen_titles.txt")
 MAX_SEEN_TITLES = 5000
 
+# Junk / non-news sources to exclude — these pollute results with technical noise
+# (package indexes, code repos, dev forums) instead of real market/AI news.
+EXCLUDED_DOMAINS = [
+    "pypi.org", "github.com", "gitlab.com", "npmjs.com", "readthedocs.io",
+    "stackoverflow.com", "medium.com", "dev.to", "reddit.com", "hackernoon.com",
+    "producthunt.com", "sourceforge.net", "bitbucket.org", "gitee.com",
+]
+
 # ── Section definitions ───────────────────────────────────────────────────────
 # Each section has an emoji label and a set of trigger keywords (lowercased).
 # Articles are matched top-to-bottom; first match wins.
@@ -184,6 +192,7 @@ class TelegramNewsBot:
             "language": "en",
             "sortBy": "publishedAt",
             "pageSize": 30,
+            "excludeDomains": ",".join(EXCLUDED_DOMAINS),  # filter junk sources
         }
         try:
             resp = requests.get(f"{NEWSAPI_BASE}/everything", params=params, timeout=10)
@@ -226,6 +235,11 @@ class TelegramNewsBot:
             url = (article.get("url") or "").strip()
             if not title or not url or title == "[Removed]":
                 continue
+
+            # Backstop: skip excluded junk sources even if the API returns them
+            if any(domain in url.lower() for domain in EXCLUDED_DOMAINS):
+                continue
+
             norm = title.lower()
             if norm in seen_this_cycle or self._is_duplicate(title):
                 continue
