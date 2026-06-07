@@ -48,17 +48,7 @@ MAX_SEEN_TITLES = 5000
 # Each section has an emoji label and a set of trigger keywords (lowercased).
 # Articles are matched top-to-bottom; first match wins.
 SECTIONS = [
-    {
-        "label": "📈 Stock Market",
-        "keywords": {
-            "stocks", "stock market", "s&p", "s&p 500", "nasdaq", "dow jones",
-            "dow", "wall street", "fed", "federal reserve", "inflation",
-            "interest rate", "rate cut", "rate hike", "earnings", "ipo",
-            "bonds", "treasury", "recession", "gdp", "selloff", "sell-off",
-            "rally", "bear market", "bull market", "volatility", "vix",
-            "hedge fund", "etf", "futures", "yields",
-        },
-    },
+    # Specific topics first so they win over the broad Stock Market bucket
     {
         "label": "💰 Crypto",
         "keywords": {
@@ -74,6 +64,17 @@ SECTIONS = [
             "ai", "artificial intelligence", "chatgpt", "openai", "claude",
             "gemini", "llm", "machine learning", "deep learning", "generative",
             "anthropic", "gpt", "neural network", "agi", "copilot", "nvidia",
+        },
+    },
+    {
+        "label": "📈 Stock Market",
+        "keywords": {
+            "stocks", "stock market", "s&p", "s&p 500", "nasdaq", "dow jones",
+            "dow", "wall street", "fed", "federal reserve", "inflation",
+            "interest rate", "rate cut", "rate hike", "earnings", "ipo",
+            "bonds", "treasury", "recession", "gdp", "selloff", "sell-off",
+            "rally", "bear market", "bull market", "volatility", "vix",
+            "hedge fund", "etf", "futures", "yields",
         },
     },
 ]
